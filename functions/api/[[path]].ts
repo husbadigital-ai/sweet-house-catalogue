@@ -75,7 +75,7 @@ export async function onRequest(ctx:Ctx){
   const key=`products/${new Date().toISOString().slice(0,10)}/${crypto.randomUUID()}.${allowed[file.type]}`;
   await env.IMAGES.put(key,file.stream(),{httpMetadata:{contentType:file.type,cacheControl:"public, max-age=31536000, immutable"}});
   if(!env.R2_PUBLIC_BASE_URL)return json({error:"Upload stored, but R2_PUBLIC_BASE_URL is missing. Configure the bucket's public/custom domain URL."},503);
-  return json({url:`${env.R2_PUBLIC_BASE_URL.replace(/\\/$/,"")}/${key}`},201);
+  return json({url:`${env.R2_PUBLIC_BASE_URL.replace(/\/$/,"")}/${key}`},201);
  }
  return json({error:"API route not found."},404);
 }
