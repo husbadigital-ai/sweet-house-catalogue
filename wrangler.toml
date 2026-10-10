@@ -1,0 +1,8 @@
+name = "sweet-house-catalogue"
+compatibility_date = "2026-10-10"
+pages_build_output_dir = "./dist"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "sweet-house-db"
+database_id = "ad99c5ac-ce60-461b-9593-032ee741cb6c"
