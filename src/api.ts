@@ -1,28 +1,26 @@
-import type { Product, ProductInput } from "./types";
+import type { Product, ProductInput, ShopSettings } from "./types";
 async function request<T>(url: string, init?: RequestInit): Promise<T> {
- const r = await fetch(url, { credentials: "same-origin", ...init });
- const data = await r.json().catch(() => ({}));
- if (!r.ok) throw new Error(data.error || `Request failed (${r.status})`);
- return data as T;
+  const response = await fetch(url, { credentials: "same-origin", cache: "no-store", ...init });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(data.error || `Request failed (${response.status})`);
+  return data as T;
 }
-type ShopSettings = Record<string, string> & { whatsapp: string; shopName: string; categories?: string };
 export const api = {
- products: () => request<{products: Product[]}>("/api/products"),
- adminProducts: () => request<{products: Product[]}>("/api/products?admin=1"),
- login: (username: string, password: string) => request<{ok:boolean}>("/api/login", {method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({username,password})}),
- logout: () => request<{ok:boolean}>("/api/logout",{method:"POST"}),
- me: () => request<{authenticated:boolean}>("/api/me"),
- settings: () => request<{settings:ShopSettings}>("/api/settings"),
- saveSettings: (settings:ShopSettings) => request<{ok:boolean;settings:ShopSettings}>("/api/settings",{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify(settings)}),
- save: (p: ProductInput, id?: number) => request<{product: Product}>("/api/products"+(id?`/${id}`:""), {method:id?"PUT":"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(p)}),
- remove: (id:number) => request<{ok:boolean}>(`/api/products/${id}`,{method:"DELETE"}),
- upload: async (file: File, onProgress: (n:number)=>void) => {
-   // XMLHttpRequest is used for reliable upload progress reporting.
-   return new Promise<{url:string}>((resolve,reject)=>{
-    const xhr=new XMLHttpRequest(); xhr.open("POST","/api/upload"); xhr.withCredentials=true;
-    xhr.upload.onprogress=e=>{if(e.lengthComputable)onProgress(Math.round(e.loaded/e.total*100));};
-    xhr.onload=()=>{try{const d=JSON.parse(xhr.responseText); if(xhr.status>=200&&xhr.status<300)resolve(d);else reject(new Error(d.error||"Upload failed"));}catch{reject(new Error("Unexpected upload response"));}};
-    xhr.onerror=()=>reject(new Error("Network error while uploading")); const form=new FormData();form.append("file",file);xhr.send(form);
-   });
- }
+  products: () => request<{ products: Product[] }>("/api/products"),
+  adminProducts: () => request<{ products: Product[] }>("/api/products?admin=1"),
+  login: (username: string, password: string) => request<{ ok: boolean }>("/api/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ username, password }) }),
+  logout: () => request<{ ok: boolean }>("/api/logout", { method: "POST" }),
+  me: () => request<{ authenticated: boolean }>("/api/me"),
+  settings: () => request<{ settings: ShopSettings }>("/api/settings"),
+  saveSettings: (settings: ShopSettings) => request<{ ok: boolean; settings: ShopSettings }>("/api/settings", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(settings) }),
+  save: (product: ProductInput, id?: number) => request<{ product: Product }>(`/api/products${id ? `/${id}` : ""}`, { method: id ? "PUT" : "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(product) }),
+  remove: (id: number) => request<{ ok: boolean }>(`/api/products/${id}`, { method: "DELETE" }),
+  trackEnquiry: (id: number) => request<{ ok: boolean }>(`/api/enquiry/${id}`, { method: "POST" }),
+  insights: () => request<{ products: { id: number; name: string; enquiry_count: number }[]; totalClicks: number }>("/api/insights"),
+  upload: async (file: File, onProgress: (percent: number) => void) => new Promise<{ url: string }>((resolve, reject) => {
+    const xhr = new XMLHttpRequest(); xhr.open("POST", "/api/upload"); xhr.withCredentials = true;
+    xhr.upload.onprogress = event => { if (event.lengthComputable) onProgress(Math.round(event.loaded / event.total * 100)); };
+    xhr.onload = () => { try { const data = JSON.parse(xhr.responseText); if (xhr.status >= 200 && xhr.status < 300) resolve(data); else reject(new Error(data.error || "Upload failed")); } catch { reject(new Error("Unexpected upload response")); } };
+    xhr.onerror = () => reject(new Error("Network error while uploading")); const form = new FormData(); form.append("file", file); xhr.send(form);
+  })
 };

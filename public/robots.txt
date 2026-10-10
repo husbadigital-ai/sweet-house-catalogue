@@ -1,0 +1,5 @@
+User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /api/
+Sitemap: https://sweet-house-catalogue.pages.dev/sitemap.xml
