@@ -11,8 +11,8 @@ export const api = {
  login: (username: string, password: string) => request<{ok:boolean}>("/api/login", {method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({username,password})}),
  logout: () => request<{ok:boolean}>("/api/logout",{method:"POST"}),
  me: () => request<{authenticated:boolean}>("/api/me"),
- settings: () => request<{settings:{whatsapp:string;shopName:string}}>("/api/settings"),
- saveSettings: (settings:{whatsapp:string;shopName:string}) => request<{ok:boolean;settings:{whatsapp:string;shopName:string}}>("/api/settings",{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify(settings)}),
+ settings: () => request<{settings:Record<string,string> & {whatsapp:string;shopName:string;categories?:string}}>("/api/settings"),
+ saveSettings: (settings:Record<string,string> & {whatsapp:string;shopName:string;categories?:string}) => request<{ok:boolean;settings:Record<string,string> & {whatsapp:string;shopName:string;categories?:string}}>("/api/settings",{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify(settings)}),
  save: (p: ProductInput, id?: number) => request<{product: Product}>("/api/products"+(id?`/${id}`:""), {method:id?"PUT":"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(p)}),
  remove: (id:number) => request<{ok:boolean}>(`/api/products/${id}`,{method:"DELETE"}),
  upload: async (file: File, onProgress: (n:number)=>void) => {
