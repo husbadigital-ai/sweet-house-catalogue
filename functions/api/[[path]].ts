@@ -31,17 +31,25 @@ export async function onRequest(ctx:Ctx){
  if(path==="settings"&&method==="GET"){
   const rows=await env.DB.prepare("SELECT key,value FROM settings").all();
   const settings=Object.fromEntries((rows.results||[]).map((r:any)=>[r.key,r.value]));
-  return json({settings:{whatsapp:settings.whatsapp||"",shopName:settings.shopName||"Sweet House"}});
+  return json({settings:{...settings,whatsapp:settings.whatsapp||"",shopName:settings.shopName||"Sweet House"}});
  }
  if(path==="settings"&&(method==="PUT"||method==="POST")){
   if(!await isAdmin(request,env))return json({error:"Admin access is required."},401);
   const body=await request.json().catch(()=>null) as any;
-  const whatsapp=String(body?.whatsapp||"").replace(/[^0-9]/g,"").slice(0,16);
-  const shopName=String(body?.shopName||"Sweet House").trim().slice(0,80);
-  if(whatsapp.length<8||whatsapp.length>15)return json({error:"Enter a WhatsApp number with country code, digits only."},400);
-  await env.DB.prepare("INSERT INTO settings(key,value,updated_at) VALUES('whatsapp',?,CURRENT_TIMESTAMP) ON CONFLICT(key) DO UPDATE SET value=excluded.value,updated_at=CURRENT_TIMESTAMP").bind(whatsapp).run();
-  await env.DB.prepare("INSERT INTO settings(key,value,updated_at) VALUES('shopName',?,CURRENT_TIMESTAMP) ON CONFLICT(key) DO UPDATE SET value=excluded.value,updated_at=CURRENT_TIMESTAMP").bind(shopName).run();
-  return json({ok:true,settings:{whatsapp,shopName}});
+  const allowed=["whatsapp","shopName","tagline","phone","address","mapsUrl","mapsEmbed","timings","fssai","instagram","facebook","offerText","offerEnabled","heroImage","aboutText","categories","reviews","bulkMessage"];
+  const incoming:Record<string,string>={};
+  for(const key of allowed){if(body?.[key]!==undefined)incoming[key]=String(body[key]??"").slice(0,key==="aboutText"?3000:1000);}
+  for(const [key,value] of Object.entries(body||{})){if(/^(weights|flags)_[a-z0-9-]{1,120}$/.test(key))incoming[key]=String(value??"").slice(0,1000);}
+  const whatsapp=String(incoming.whatsapp??"").replace(/[^0-9]/g,"").slice(0,16);
+  const shopName=String(incoming.shopName??"Sweet House").trim().slice(0,80);
+  if(whatsapp.length && (whatsapp.length<8||whatsapp.length>15))return json({error:"Enter a WhatsApp number with country code, digits only."},400);
+  incoming.whatsapp=whatsapp;incoming.shopName=shopName||"Sweet House";
+  for(const [key,value] of Object.entries(incoming)){
+   await env.DB.prepare("INSERT INTO settings(key,value,updated_at) VALUES(?,?,CURRENT_TIMESTAMP) ON CONFLICT(key) DO UPDATE SET value=excluded.value,updated_at=CURRENT_TIMESTAMP").bind(key,value).run();
+  }
+  const rows=await env.DB.prepare("SELECT key,value FROM settings").all();
+  const settings=Object.fromEntries((rows.results||[]).map((r:any)=>[r.key,r.value]));
+  return json({ok:true,settings});
  }
  if(path==="products"&&method==="GET"){
   const admin=url.searchParams.get("admin")==="1";if(admin&&!await isAdmin(request,env))return json({error:"Admin access is required."},401);

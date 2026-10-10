@@ -1,9 +1,14 @@
-const CACHE = "sweet-house-v1";
-const CORE = ["/", "/manifest.webmanifest", "/icon.svg"];
-self.addEventListener("install", e => e.waitUntil(caches.open(CACHE).then(c => c.addAll(CORE))));
-self.addEventListener("activate", e => e.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k))))));
-self.addEventListener("fetch", e => {
-  const u = new URL(e.request.url);
-  if (e.request.method !== "GET" || u.pathname.startsWith("/api/")) return;
-  e.respondWith(fetch(e.request).then(r => { if (r.ok && u.origin === location.origin) { const copy = r.clone(); caches.open(CACHE).then(c => c.put(e.request, copy)); } return r; }).catch(() => caches.match(e.request).then(r => r || caches.match("/"))));
+const CACHE = "sweet-house-v4";
+const CORE = ["/", "/manifest.webmanifest", "/icon.svg", "/offline.html"];
+self.addEventListener("install", event => event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(CORE)).then(()=>self.skipWaiting())));
+self.addEventListener("activate", event => event.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(key => key !== CACHE).map(key => caches.delete(key)))).then(()=>self.clients.claim())));
+self.addEventListener("fetch", event => {
+ const request=event.request, url=new URL(request.url);
+ if(request.method!=="GET"||url.pathname.startsWith("/api/")) return;
+ if(url.origin!==location.origin) return;
+ if(request.mode==="navigate"){
+  event.respondWith(fetch(request).then(response=>{if(response.ok){const copy=response.clone();caches.open(CACHE).then(cache=>cache.put(request,copy));}return response;}).catch(()=>caches.match(request).then(cached=>cached||caches.match("/offline.html"))));
+  return;
+ }
+ event.respondWith(caches.match(request).then(cached=>{const network=fetch(request).then(response=>{if(response.ok)caches.open(CACHE).then(cache=>cache.put(request,response.clone()));return response;}).catch(()=>cached);return cached||network;}));
 });
